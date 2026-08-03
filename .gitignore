@@ -1,0 +1,16 @@
+# build artifacts
+dist/
+build/
+build_tmp/
+*.spec
+__pycache__/
+*.pyc
+
+# logs
+*.log
+
+# internal / experiments (공개 제외)
+HANDOFF.md
+make_icon*.py
+icon_*.ico
+icon_*.png

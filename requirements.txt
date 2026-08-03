@@ -1,0 +1,4 @@
+PyQt6
+requests
+keyboard
+# 빌드용: pyinstaller
