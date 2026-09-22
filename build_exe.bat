@@ -19,8 +19,11 @@ echo [1/3] Installing packages...
 python -m pip install --quiet --upgrade pip
 python -m pip install --quiet PyQt6 requests keyboard pyinstaller
 
+echo Closing running SpellTimer (if any)...
+taskkill /f /im SpellTimer.exe >nul 2>nul
+
 echo [2/3] Building EXE... (takes 1-2 minutes)
-python -m PyInstaller --onefile --windowed --icon "spelltimer.ico" --name "SpellTimer" lol_spell_timer.py
+python -m PyInstaller --onefile --windowed --icon "spelltimer.ico" --add-data "spelltimer.ico;." --name "SpellTimer" lol_spell_timer.py
 
 if errorlevel 1 (
     echo.

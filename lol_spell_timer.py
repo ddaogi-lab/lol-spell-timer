@@ -51,6 +51,15 @@ CACHE_DIR = os.path.join(APP_DIR, "icons")
 LOG_PATH = os.path.join(APP_DIR, "error.log")
 
 
+def resource_path(name):
+    """번들 리소스 경로. PyInstaller onefile(sys._MEIPASS)과 스크립트 실행 모두 대응"""
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, name)
+
+
+ICON_PATH = resource_path("spelltimer.ico")
+
+
 def _log_error(where=""):
     """예외 내용을 로그 파일에 기록 (크래시 원인 추적용)"""
     try:
@@ -467,6 +476,7 @@ class Overlay(QWidget):
         self.tracker = GameWindowTracker()
         self.game_offset = None
         self.last_game_pos = None
+        self._positioned = False   # 첫 표시 때 한 번 가운데 정렬 후 위치 기억
         self.icon_cache = IconCache()
 
         self.session = requests.Session()
@@ -656,6 +666,30 @@ class Overlay(QWidget):
             hwnd, 0, 0, 0, 0, 0,
             SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED)
 
+    def _visible_enough(self):
+        """오버레이가 어느 모니터에든 절반 이상 보이면 True (화면 밖 판정용)"""
+        fr = self.frameGeometry()
+        win_area = max(1, fr.width() * fr.height())
+        best = 0
+        for scr in QApplication.screens():
+            inter = fr.intersected(scr.availableGeometry())
+            if not inter.isEmpty():
+                best = max(best, inter.width() * inter.height())
+        return best >= win_area * 0.5
+
+    def _center_on_screen(self):
+        """커서가 있는 모니터 가운데로 오버레이 이동 (구석/화면 밖 방지)"""
+        self.adjustSize()
+        screen = (QApplication.screenAt(QCursor.pos())
+                  or QApplication.primaryScreen())
+        if screen is None:
+            return
+        geo = screen.availableGeometry()
+        fr = self.frameGeometry()
+        x = geo.x() + (geo.width() - fr.width()) // 2
+        y = geo.y() + (geo.height() - fr.height()) // 2
+        self.move(x, y)
+
     def show_overlay(self):
         """창을 확실하게 보이게: 잠금/투명 스타일을 풀고 최상단으로 끌어올림"""
         # 잠금이 남아 있으면 해제 (투명 통과 상태로 안 보이는 것 방지)
@@ -666,6 +700,12 @@ class Overlay(QWidget):
             self.windowState() & ~Qt.WindowState.WindowMinimized)
         self.raise_()
         self.activateWindow()
+        # 첫 표시이거나 화면 밖으로 나갔을 때만 가운데로 (그 외엔 마지막 위치 유지)
+        if not self._positioned or not self._visible_enough():
+            self._center_on_screen()
+            # 추적 오프셋 리셋 → 다음 추적부터 이 중앙 위치 기준으로 재계산
+            self.game_offset = None
+            self._positioned = True
         # Windows에서 확실히 최상단 + 보이게 강제
         if IS_WINDOWS:
             try:
@@ -717,7 +757,11 @@ class Overlay(QWidget):
             self.rows[n - 1].flash_button().toggle()
 
     # ---------- 트레이 ----------
-    def _make_tray(self):
+    def _tray_icon(self):
+        """spelltimer.ico를 로드. 없으면 예전처럼 코드로 그린 아이콘으로 폴백."""
+        icon = QIcon(ICON_PATH)
+        if not icon.isNull():
+            return icon
         pix = QPixmap(32, 32)
         pix.fill(QColor(0, 0, 0, 0))
         p = QPainter(pix)
@@ -729,8 +773,12 @@ class Overlay(QWidget):
         p.setFont(QFont("Malgun Gothic", 13, QFont.Weight.Bold))
         p.drawText(pix.rect(), Qt.AlignmentFlag.AlignCenter, "F")
         p.end()
+        return QIcon(pix)
 
-        self.tray = QSystemTrayIcon(QIcon(pix), self)
+    def _make_tray(self):
+        icon = self._tray_icon()
+        self.setWindowIcon(icon)
+        self.tray = QSystemTrayIcon(icon, self)
         self.tray.setToolTip("롤 스펠 타이머")
         menu = QMenu()
         act_show = QAction("보이기", self)
@@ -986,9 +1034,9 @@ def main():
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     app.setFont(QFont("Malgun Gothic", 9))
+    app.setWindowIcon(QIcon(ICON_PATH))
     w = Overlay()
-    w.move(60, 120)
-    w.show()
+    w.show_overlay()   # 첫 실행도 가운데 정렬 경로를 타게
     sys.exit(app.exec())
 
 
