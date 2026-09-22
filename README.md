@@ -10,6 +10,7 @@
 - 스펠 아이콘 클릭 또는 `Ctrl+1~5`로 해당 적 점멸 타이머 시작/취소
 - 쿨감 토글: 아이오니아 장화(+10) / 강화 장화(+20) / 우주적 통찰 룬(+18)
 - 창모드에서 롤 창을 옮기면 오버레이가 따라다님, 투명도 조절, 클릭 통과(`Alt+A`)
+- 표시될 때 화면 가운데에서 시작하고, 화면 밖으로 벗어나면 자동으로 되돌아옴
 - 스펠 아이콘은 Riot Data Dragon에서 받아 로컬 캐시 (최신 버전 자동 조회)
 
 ## 단축키
@@ -37,7 +38,7 @@ build_exe.bat
 또는 직접:
 
 ```bat
-python -m PyInstaller --onefile --windowed --icon spelltimer.ico --name SpellTimer lol_spell_timer.py
+python -m PyInstaller --onefile --windowed --icon spelltimer.ico --add-data "spelltimer.ico;." --name SpellTimer lol_spell_timer.py
 ```
 
 ## 기술 스택
